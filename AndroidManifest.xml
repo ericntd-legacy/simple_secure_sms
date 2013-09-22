@@ -68,16 +68,16 @@
             
         </activity>
 		
-        <service android:enabled="true" android:name="org.thoughtcrime.securesms.service.SendReceiveService"/>
+        <service android:enabled="true" android:name="textsecure.service.SendReceiveService"/>
         
-        <receiver android:name="org.thoughtcrime.securesms.service.SmsListener"
+        <receiver android:name="textsecure.service.SmsListener"
               android:enabled="true"
               android:exported="true">
              <intent-filter android:priority="1001">
                  <action android:name="android.provider.Telephony.SMS_RECEIVED"></action>
              </intent-filter>
              <intent-filter>
-                 <action android:name="org.thoughtcrime.securesms.services.MESSAGE_SENT"></action>
+                 <action android:name="org.thoughtcrime.securesms.services.MESSAGE_SENT"></action> <!-- Where is this defined? -->
              </intent-filter>
     	</receiver>
     </application>
