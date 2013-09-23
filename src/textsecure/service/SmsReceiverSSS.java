@@ -7,11 +7,9 @@ import android.util.Log;
 import android.util.Pair;
 
 import org.thoughtcrime.securesms.ApplicationPreferencesActivity;
-import org.thoughtcrime.securesms.crypto.DecryptingQueue;
 import org.thoughtcrime.securesms.crypto.InvalidKeyException;
 import org.thoughtcrime.securesms.crypto.InvalidVersionException;
 import org.thoughtcrime.securesms.crypto.KeyExchangeMessage;
-import org.thoughtcrime.securesms.crypto.KeyExchangeProcessor;
 import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.crypto.MasterSecretUtil;
 import org.thoughtcrime.securesms.database.DatabaseFactory;
@@ -24,9 +22,12 @@ import org.thoughtcrime.securesms.sms.IncomingKeyExchangeMessage;
 import org.thoughtcrime.securesms.sms.IncomingTextMessage;
 import org.thoughtcrime.securesms.sms.MultipartSmsMessageHandler;
 
+import textsecure.crypto.DecryptingQueueSSS;
+import textsecure.crypto.KeyExchangeProcessorSSS;
+
 import java.util.List;
 
-public class SmsReceiver {
+public class SmsReceiverSSS {
 	// debugging
 	private final String TAG = "SmsReceiver";
 
@@ -34,7 +35,7 @@ public class SmsReceiver {
 
   private final Context context;
 
-  public SmsReceiver(Context context) {
+  public SmsReceiverSSS(Context context) {
     this.context      = context;
   }
 
@@ -56,7 +57,7 @@ public class SmsReceiver {
                                                          .insertMessageInbox(masterSecret, message);
 
     if (masterSecret != null) {
-      DecryptingQueue.scheduleDecryption(context, masterSecret, messageAndThreadId.first,
+      DecryptingQueueSSS.scheduleDecryption(context, masterSecret, messageAndThreadId.first,
                                          messageAndThreadId.second,
                                          message.getSender(), message.getMessageBody(),
                                          message.isSecureMessage(), message.isKeyExchange());
@@ -88,7 +89,7 @@ public class SmsReceiver {
       try {
         Recipient recipient                   = new Recipient(null, message.getSender(), null, null);
         KeyExchangeMessage keyExchangeMessage = new KeyExchangeMessage(message.getMessageBody());
-        KeyExchangeProcessor processor        = new KeyExchangeProcessor(context, masterSecret, recipient);
+        KeyExchangeProcessorSSS processor        = new KeyExchangeProcessorSSS(context, masterSecret, recipient);
 
         Log.w(TAG, "Received key with fingerprint: " + keyExchangeMessage.getPublicKey().getFingerprint());
 
@@ -129,7 +130,7 @@ public class SmsReceiver {
   }
 
   public void process(MasterSecret masterSecret, Intent intent) {
-    if (intent.getAction().equals(SendReceiveService.RECEIVE_SMS_ACTION)) {
+    if (intent.getAction().equals(SendReceiveServiceSSS.RECEIVE_SMS_ACTION)) {
       handleReceiveMessage(masterSecret, intent);
     }
   }

@@ -51,7 +51,7 @@
         android:allowBackup="true" >
         
         <activity
-            android:name="sg.edu.dukenus.simplesecuresms.ConversationListActivitySSS"
+            android:name=".ConversationListActivitySSS"
             android:configChanges="touchscreen|keyboard|keyboardHidden|orientation|screenLayout|screenSize"
             android:label="@string/app_name"
             android:launchMode="singleTask"
@@ -61,16 +61,38 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                  <action android:name="android.intent.action.SENDTO"/>
+                  <category android:name="android.intent.category.DEFAULT" />
+                  <data android:scheme="sms" />
+                  <data android:scheme="smsto" />
+            </intent-filter>
+            
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="text/*" />
+            </intent-filter>
         </activity>
-        <activity android:name="sg.edu.dukenus.simplesecuresms.ConversationActivitySSS"
+        <activity android:name=".ConversationActivitySSS"
             android:configChanges="touchscreen|keyboard|keyboardHidden|orientation|screenLayout|screenSize"
             android:uiOptions="splitActionBarWhenNarrow">
             
         </activity>
-		
-        <service android:enabled="true" android:name="textsecure.service.SendReceiveService"/>
+        <activity android:name=".ReceiveKeyActivitySSS" 
+              android:theme="@style/Theme.Sherlock.Light" 
+              android:label="@string/AndroidManifest__complete_key_exchange" 
+              android:configChanges="touchscreen|keyboard|keyboardHidden|orientation|screenLayout|screenSize"/>
         
-        <receiver android:name="textsecure.service.SmsListener"
+        <activity android:name=".ApplicationPreferencesActivity"
+              android:configChanges="touchscreen|keyboard|keyboardHidden|orientation|screenLayout|screenSize"/>
+		
+        <service android:enabled="true" android:name="textsecure.service.SendReceiveServiceSSS"/>
+        <service android:enabled="true" android:name="textsecure.service.KeyCachingService"/>
+        
+        <receiver android:name="textsecure.service.SmsListenerSSS"
               android:enabled="true"
               android:exported="true">
              <intent-filter android:priority="1001">

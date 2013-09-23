@@ -18,14 +18,15 @@ import org.thoughtcrime.securesms.database.DatabaseFactory;
 import org.thoughtcrime.securesms.database.ThreadDatabase;
 import org.thoughtcrime.securesms.notifications.MessageNotifier;
 
-import org.thoughtcrime.securesms.service.KeyCachingService;
-import org.thoughtcrime.securesms.service.SendReceiveService;
 import org.thoughtcrime.securesms.util.DynamicLanguage;
 import org.thoughtcrime.securesms.util.DynamicTheme;
 import org.thoughtcrime.securesms.util.MemoryCleaner;
 
 import org.thoughtcrime.securesms.recipients.Recipients;
 import org.thoughtcrime.securesms.recipients.RecipientFactory;
+
+import textsecure.service.KeyCachingServiceSSS;
+import textsecure.service.SendReceiveServiceSSS;
 
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
@@ -69,7 +70,7 @@ public class ConversationListActivitySSS extends
 
 	@Override
 	public void onCreate(Bundle icicle) {
-		//dynamicTheme.onCreate(this);
+		dynamicTheme.onCreate(this);
 		//dynamicLanguage.onCreate(this);
 		super.onCreate(icicle);
 
@@ -85,7 +86,7 @@ public class ConversationListActivitySSS extends
 	@Override
 	public void onResume() {
 		super.onResume();
-		//dynamicTheme.onResume(this);
+		dynamicTheme.onResume(this);
 		//dynamicLanguage.onResume(this);
 	}
 
@@ -208,8 +209,8 @@ public class ConversationListActivitySSS extends
 	}
 
 	private void handleClearPassphrase() {
-		Intent intent = new Intent(this, KeyCachingService.class);
-		intent.setAction(KeyCachingService.CLEAR_KEY_ACTION);
+		Intent intent = new Intent(this, KeyCachingServiceSSS.class);
+		intent.setAction(KeyCachingServiceSSS.CLEAR_KEY_ACTION);
 		startService(intent);
 	}
 
@@ -280,12 +281,12 @@ public class ConversationListActivitySSS extends
 	}*/
 
 	private void initializeSenderReceiverService() {
-		Intent smsSenderIntent = new Intent(SendReceiveService.SEND_SMS_ACTION,
-				null, this, SendReceiveService.class);
-		Intent mmsSenderIntent = new Intent(SendReceiveService.SEND_MMS_ACTION,
-				null, this, SendReceiveService.class);
+		Intent smsSenderIntent = new Intent(SendReceiveServiceSSS.SEND_SMS_ACTION,
+				null, this, SendReceiveServiceSSS.class);
+		/*Intent mmsSenderIntent = new Intent(SendReceiveServiceSSS.SEND_MMS_ACTION,
+				null, this, SendReceiveServiceSSS.class);*/
 		startService(smsSenderIntent);
-		startService(mmsSenderIntent);
+		//startService(mmsSenderIntent);
 	}
 
 	private void initializeResources() {
@@ -300,7 +301,7 @@ public class ConversationListActivitySSS extends
 		
 		// inject the masterSecret value since this is not launched from another activity such as PassphraseCreateActivity
 		String passphrase = "hardcodedpass";
-	    masterSecret      = MasterSecretUtil.generateMasterSecret(ConversationListActivitySSS.this, passphrase);
+	    this.masterSecret      = MasterSecretUtil.generateMasterSecret(ConversationListActivitySSS.this, passphrase);
 
 		this.fragment = (ConversationListFragmentSSS) this.getSupportFragmentManager().findFragmentById(R.id.fragment_content);
 

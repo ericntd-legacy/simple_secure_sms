@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
 import android.text.ClipboardManager;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -25,194 +26,224 @@ import org.thoughtcrime.securesms.database.loaders.ConversationLoader;
 import org.thoughtcrime.securesms.database.model.MessageRecord;
 import org.thoughtcrime.securesms.recipients.Recipients;
 
-import org.thoughtcrime.securesms.ConversationAdapter;
-
 import java.sql.Date;
 import java.text.SimpleDateFormat;
 
-public class ConversationFragmentSSS extends SherlockListFragment
-  implements LoaderManager.LoaderCallbacks<Cursor>
-{
+public class ConversationFragmentSSS extends SherlockListFragment implements
+		LoaderManager.LoaderCallbacks<Cursor> {
+	// debugging
+	private final String TAG = "ConversationFragmentSSS";
+	private final boolean D = true;
 
-  private ConversationFragmentListener listener;
+	private ConversationFragmentListener listener;
 
-  private MasterSecret masterSecret;
-  private Recipients   recipients;
-  private long         threadId;
+	private MasterSecret masterSecret;
+	private Recipients recipients;
+	private long threadId;
 
-  @Override
-  public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle bundle) {
-    return inflater.inflate(R.layout.conversation_fragment, container, false);
-  }
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle bundle) {
+		Log.w(TAG, TAG + " onCreateView");
+		return inflater.inflate(R.layout.conversation_fragment, container,
+				false);
+	}
 
-  @Override
-  public void onActivityCreated(Bundle bundle) {
-    super.onActivityCreated(bundle);
+	@Override
+	public void onActivityCreated(Bundle bundle) {
+		super.onActivityCreated(bundle);
+		Log.w(TAG, TAG + " onActivityCreated");
 
-    initializeResources();
-    initializeListAdapter();
-    registerForContextMenu(getListView());
-  }
+		initializeResources();
+		initializeListAdapter();
+		registerForContextMenu(getListView());
+	}
 
-  @Override
-  public void onCreateContextMenu (ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-    android.view.MenuInflater inflater = this.getSherlockActivity().getMenuInflater();
-    menu.clear();
+	@Override
+	public void onCreateContextMenu(ContextMenu menu, View v,
+			ContextMenu.ContextMenuInfo menuInfo) {
+		android.view.MenuInflater inflater = this.getSherlockActivity()
+				.getMenuInflater();
+		menu.clear();
 
-    inflater.inflate(R.menu.conversation_context, menu);
-  }
+		inflater.inflate(R.menu.conversation_context, menu);
+	}
 
-  @Override
-  public boolean onContextItemSelected(android.view.MenuItem item) {
-    Cursor cursor                     = ((CursorAdapter)getListAdapter()).getCursor();
-    ConversationItemSSS conversationItem = (ConversationItemSSS)(((ConversationAdapter)getListAdapter()).newView(getActivity(), cursor, null));
-    MessageRecord messageRecord       = conversationItem.getMessageRecord();
+	@Override
+	public boolean onContextItemSelected(android.view.MenuItem item) {
+		Cursor cursor = ((CursorAdapter) getListAdapter()).getCursor();
+		ConversationItemSSS conversationItem = (ConversationItemSSS) (((ConversationAdapterSSS) getListAdapter())
+				.newView(getActivity(), cursor, null));
+		MessageRecord messageRecord = conversationItem.getMessageRecord();
 
-    /*switch(item.getItemId()) {
-    case R.id.menu_context_copy:           handleCopyMessage(messageRecord);     return true;
-    case R.id.menu_context_delete_message: handleDeleteMessage(messageRecord);   return true;
-    case R.id.menu_context_details:        handleDisplayDetails(messageRecord);  return true;
-    case R.id.menu_context_forward:        handleForwardMessage(messageRecord);  return true;
-    }*/
-    int id = item.getItemId();
-    if (id==R.id.menu_context_copy) {
-    	handleCopyMessage(messageRecord);     return true;
-    } else if (id==R.id.menu_context_delete_message) {
-    	handleDeleteMessage(messageRecord);   return true;
-    } else if (id==R.id.menu_context_details) {
-    	handleDisplayDetails(messageRecord);  return true;
-    } else if (id==R.id.menu_context_forward) {
-    	handleForwardMessage(messageRecord);  return true;
-    }
+		/*
+		 * switch(item.getItemId()) { case R.id.menu_context_copy:
+		 * handleCopyMessage(messageRecord); return true; case
+		 * R.id.menu_context_delete_message: handleDeleteMessage(messageRecord);
+		 * return true; case R.id.menu_context_details:
+		 * handleDisplayDetails(messageRecord); return true; case
+		 * R.id.menu_context_forward: handleForwardMessage(messageRecord);
+		 * return true; }
+		 */
+		int id = item.getItemId();
+		if (id == R.id.menu_context_copy) {
+			handleCopyMessage(messageRecord);
+			return true;
+		} else if (id == R.id.menu_context_delete_message) {
+			handleDeleteMessage(messageRecord);
+			return true;
+		} else if (id == R.id.menu_context_details) {
+			handleDisplayDetails(messageRecord);
+			return true;
+		} else if (id == R.id.menu_context_forward) {
+			handleForwardMessage(messageRecord);
+			return true;
+		}
 
-    return false;
-  }
+		return false;
+	}
 
-  @Override
-  public void onAttach(Activity activity) {
-    super.onAttach(activity);
-    this.listener = (ConversationFragmentListener)activity;
-  }
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		Log.w(TAG, TAG + " onAttach");
+		
+		this.listener = (ConversationFragmentListener) activity;
+	}
 
-  public void reload(Recipients recipients, long threadId) {
-    this.recipients = recipients;
-    this.threadId   = threadId;
+	public void reload(Recipients recipients, long threadId) {
+		this.recipients = recipients;
+		this.threadId = threadId;
 
-    initializeListAdapter();
-  }
+		initializeListAdapter();
+	}
 
-  private void handleCopyMessage(MessageRecord message) {
-    String body = message.getDisplayBody().toString();
-    if (body == null) return;
+	private void handleCopyMessage(MessageRecord message) {
+		String body = message.getDisplayBody().toString();
+		if (body == null)
+			return;
 
-    ClipboardManager clipboard = (ClipboardManager)getActivity()
-        .getSystemService(Context.CLIPBOARD_SERVICE);
-    clipboard.setText(body);
-  }
+		ClipboardManager clipboard = (ClipboardManager) getActivity()
+				.getSystemService(Context.CLIPBOARD_SERVICE);
+		clipboard.setText(body);
+	}
 
-  private void handleDeleteMessage(final MessageRecord message) {
-    final long messageId   = message.getId();
+	private void handleDeleteMessage(final MessageRecord message) {
+		final long messageId = message.getId();
 
-    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-    builder.setTitle(R.string.ConversationFragment_confirm_message_delete);
-    builder.setIcon(android.R.drawable.ic_dialog_alert);
-    builder.setCancelable(true);
-    builder.setMessage(R.string.ConversationFragment_are_you_sure_you_want_to_permanently_delete_this_message);
+		AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+		builder.setTitle(R.string.ConversationFragment_confirm_message_delete);
+		builder.setIcon(android.R.drawable.ic_dialog_alert);
+		builder.setCancelable(true);
+		builder.setMessage(R.string.ConversationFragment_are_you_sure_you_want_to_permanently_delete_this_message);
 
-    builder.setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
-      @Override
-      public void onClick(DialogInterface dialog, int which) {
-        if (message.isMms()) {
-          DatabaseFactory.getMmsDatabase(getActivity()).delete(messageId);
-        } else {
-          DatabaseFactory.getSmsDatabase(getActivity()).deleteMessage(messageId);
-        }
-      }
-    });
+		builder.setPositiveButton(R.string.yes,
+				new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						if (message.isMms()) {
+							DatabaseFactory.getMmsDatabase(getActivity())
+									.delete(messageId);
+						} else {
+							DatabaseFactory.getSmsDatabase(getActivity())
+									.deleteMessage(messageId);
+						}
+					}
+				});
 
-    builder.setNegativeButton(R.string.no, null);
-    builder.show();
-  }
+		builder.setNegativeButton(R.string.no, null);
+		builder.show();
+	}
 
-  private void handleDisplayDetails(MessageRecord message) {
-    String sender     = message.getIndividualRecipient().getNumber();
-    String transport  = message.isMms() ? "mms" : "sms";
-    long dateReceived = message.getDateReceived();
-    long dateSent     = message.getDateSent();
+	private void handleDisplayDetails(MessageRecord message) {
+		String sender = message.getIndividualRecipient().getNumber();
+		String transport = message.isMms() ? "mms" : "sms";
+		long dateReceived = message.getDateReceived();
+		long dateSent = message.getDateSent();
 
-    SimpleDateFormat dateFormatter = new SimpleDateFormat("EEE MMM d, yyyy 'at' hh:mm:ss a zzz");
-    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-    builder.setTitle(R.string.ConversationFragment_message_details);
-    builder.setIcon(android.R.drawable.ic_dialog_info);
-    builder.setCancelable(false);
+		SimpleDateFormat dateFormatter = new SimpleDateFormat(
+				"EEE MMM d, yyyy 'at' hh:mm:ss a zzz");
+		AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+		builder.setTitle(R.string.ConversationFragment_message_details);
+		builder.setIcon(android.R.drawable.ic_dialog_info);
+		builder.setCancelable(false);
 
-    if (dateReceived == dateSent || message.isOutgoing()) {
-      builder.setMessage(String.format(getSherlockActivity()
-                                       .getString(R.string.ConversationFragment_sender_s_transport_s_sent_received_s),
-                                       sender, transport.toUpperCase(),
-                                       dateFormatter.format(new Date(dateSent))));
-    } else {
-      builder.setMessage(String.format(getSherlockActivity()
-                                       .getString(R.string.ConversationFragment_sender_s_transport_s_sent_s_received_s),
-                                       sender, transport.toUpperCase(),
-                                       dateFormatter.format(new Date(dateSent)),
-                                       dateFormatter.format(new Date(dateReceived))));
-    }
+		if (dateReceived == dateSent || message.isOutgoing()) {
+			builder.setMessage(String
+					.format(getSherlockActivity()
+							.getString(
+									R.string.ConversationFragment_sender_s_transport_s_sent_received_s),
+							sender, transport.toUpperCase(), dateFormatter
+									.format(new Date(dateSent))));
+		} else {
+			builder.setMessage(String
+					.format(getSherlockActivity()
+							.getString(
+									R.string.ConversationFragment_sender_s_transport_s_sent_s_received_s),
+							sender, transport.toUpperCase(), dateFormatter
+									.format(new Date(dateSent)), dateFormatter
+									.format(new Date(dateReceived))));
+		}
 
-    builder.setPositiveButton(android.R.string.ok, null);
-    builder.show();
-  }
+		builder.setPositiveButton(android.R.string.ok, null);
+		builder.show();
+	}
 
-  private void handleForwardMessage(MessageRecord message) {
-    Intent composeIntent = new Intent(getActivity(), ConversationActivitySSS.class);
-    composeIntent.putExtra("forwarded_message", message.getDisplayBody().toString());
-    composeIntent.putExtra("master_secret", masterSecret);
-    startActivity(composeIntent);
-  }
+	private void handleForwardMessage(MessageRecord message) {
+		Intent composeIntent = new Intent(getActivity(),
+				ConversationActivitySSS.class);
+		composeIntent.putExtra("forwarded_message", message.getDisplayBody()
+				.toString());
+		composeIntent.putExtra("master_secret", masterSecret);
+		startActivity(composeIntent);
+	}
 
-  private void initializeResources() {
-    this.masterSecret = (MasterSecret)this.getActivity().getIntent()
-                          .getParcelableExtra("master_secret");
-    this.recipients   = this.getActivity().getIntent().getParcelableExtra("recipients");
-    this.threadId     = this.getActivity().getIntent().getLongExtra("thread_id", -1);
-  }
+	private void initializeResources() {
+		this.masterSecret = (MasterSecret) this.getActivity().getIntent()
+				.getParcelableExtra("master_secret");
+		this.recipients = this.getActivity().getIntent()
+				.getParcelableExtra("recipients");
+		this.threadId = this.getActivity().getIntent()
+				.getLongExtra("thread_id", -1);
+	}
 
-  private void initializeListAdapter() {
-    if (this.recipients != null && this.threadId != -1) {
-      this.setListAdapter(new ConversationAdapter(getActivity(), masterSecret,
-                                                  new FailedIconClickHandler(),
-                                                  !this.recipients.isSingleRecipient()));
-      getListView().setRecyclerListener((ConversationAdapter)getListAdapter());
-      getLoaderManager().initLoader(0, null, this);
-    }
-  }
+	private void initializeListAdapter() {
+		if (this.recipients != null && this.threadId != -1) {
+			this.setListAdapter(new ConversationAdapterSSS(getActivity(),
+					masterSecret, new FailedIconClickHandler(),
+					!this.recipients.isSingleRecipient()));
+			getListView().setRecyclerListener(
+					(ConversationAdapterSSS) getListAdapter());
+			getLoaderManager().initLoader(0, null, this);
+		}
+	}
 
-  @Override
-  public Loader<Cursor> onCreateLoader(int arg0, Bundle arg1) {
-    return new ConversationLoader(getActivity(), threadId);
-  }
+	@Override
+	public Loader<Cursor> onCreateLoader(int arg0, Bundle arg1) {
+		return new ConversationLoader(getActivity(), threadId);
+	}
 
-  @Override
-  public void onLoadFinished(Loader<Cursor> arg0, Cursor cursor) {
-    ((CursorAdapter)getListAdapter()).changeCursor(cursor);
-  }
+	@Override
+	public void onLoadFinished(Loader<Cursor> arg0, Cursor cursor) {
+		((CursorAdapter) getListAdapter()).changeCursor(cursor);
+	}
 
-  @Override
-  public void onLoaderReset(Loader<Cursor> arg0) {
-    ((CursorAdapter)getListAdapter()).changeCursor(null);
-  }
+	@Override
+	public void onLoaderReset(Loader<Cursor> arg0) {
+		((CursorAdapter) getListAdapter()).changeCursor(null);
+	}
 
-  private class FailedIconClickHandler extends Handler {
-    @Override
-    public void handleMessage(android.os.Message message) {
-      if (listener != null) {
-        listener.setComposeText((String)message.obj);
-      }
-    }
-  }
+	private class FailedIconClickHandler extends Handler {
+		@Override
+		public void handleMessage(android.os.Message message) {
+			if (listener != null) {
+				listener.setComposeText((String) message.obj);
+			}
+		}
+	}
 
-  public interface ConversationFragmentListener {
-    public void setComposeText(String text);
-  }
+	public interface ConversationFragmentListener {
+		public void setComposeText(String text);
+	}
 
 }

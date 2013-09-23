@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<org.thoughtcrime.securesms.ConversationItem
+<sg.edu.dukenus.simplesecuresms.ConversationItemSSS
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/conversation_item"
     android:layout_width="fill_parent"
@@ -42,7 +42,7 @@
                 android:textColor="?conversation_text_primary_color"
                 android:textSize="16sp" />
 
-            <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            <FrameLayout
                 android:id="@+id/mms_view"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
@@ -72,7 +72,7 @@
 
             </FrameLayout>
 
-            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            <LinearLayout
                 android:id="@+id/mms_download_controls"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -168,4 +168,4 @@
         </LinearLayout>
 
     </RelativeLayout>
-</org.thoughtcrime.securesms.ConversationItem>
+</sg.edu.dukenus.simplesecuresms.ConversationItemSSS>

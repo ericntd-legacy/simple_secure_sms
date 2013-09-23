@@ -34,7 +34,7 @@ import org.thoughtcrime.securesms.sms.IncomingTextMessage;
 
 import java.util.ArrayList;
 
-public class SmsListener extends BroadcastReceiver {
+public class SmsListenerSSS extends BroadcastReceiver {
 	// debugging
 	private final String TAG = "SmsListener";
 
@@ -101,18 +101,27 @@ public class SmsListener extends BroadcastReceiver {
 		SmsMessage message = getSmsMessageFromIntent(intent);
 		String messageBody = getSmsMessageBodyFromIntent(intent);
 
-		if (message == null && messageBody == null)
+		if (message == null && messageBody == null) {
+			Log.e(TAG, "null");
 			return false;
+		}
 
-		if (isExemption(message, messageBody))
+		if (isExemption(message, messageBody)) {
+			Log.e(TAG, "exemption");
 			return false;
-
-		if (!ApplicationMigrationService.isDatabaseImported(context))
+		}
+		
+		// No ideas why the following 2 ifs are matched
+		/*if (!ApplicationMigrationService.isDatabaseImported(context)) {
+			Log.e(TAG, "application migration service");
 			return false;
+		}*/
 
-		if (PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
-				"pref_all_sms", true))
+		/*if (PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
+				"pref_all_sms", true)) {
+			Log.e(TAG, "some shared preferences check");
 			return true;
+		}*/
 
 		return WirePrefix.isEncryptedMessage(messageBody)
 				|| WirePrefix.isKeyExchange(messageBody);
@@ -147,11 +156,15 @@ public class SmsListener extends BroadcastReceiver {
 
 	@Override
 	public void onReceive(Context context, Intent intent) {
+		String msgBody = getSmsMessageBodyFromIntent(intent);
 		Log.w(TAG, "Got SMS broadcast... " + intent.getAction()
 				+ " and it's a challenge " + isChallenge(context, intent)
 				+ " and it's relevant " + isRelevant(context, intent)
-				+ " msg body is " + getSmsMessageBodyFromIntent(intent)
-				+ " whole message is " + getSmsMessageFromIntent(intent));
+				+ " msg body is " + msgBody
+				+ " whole message is " + getSmsMessageFromIntent(intent)
+				+ " is key exchange message " + WirePrefix.isKeyExchange(msgBody)
+				+ " or is it a encrypted message " + WirePrefix.isEncryptedMessage(msgBody)
+				+ " the message prefix is "+WirePrefix.calculateKeyExchangePrefix(msgBody));
 
 		if (intent.getAction().equals(SMS_RECEIVED_ACTION)
 				&& isChallenge(context, intent)) {
@@ -167,8 +180,8 @@ public class SmsListener extends BroadcastReceiver {
 				&& isRelevant(context, intent)) {
 			Log.w(TAG, "message is relevant, starting the SendReceiveService");
 			Intent receivedIntent = new Intent(context,
-					SendReceiveService.class);
-			receivedIntent.setAction(SendReceiveService.RECEIVE_SMS_ACTION);
+					SendReceiveServiceSSS.class);
+			receivedIntent.setAction(SendReceiveServiceSSS.RECEIVE_SMS_ACTION);
 			receivedIntent.putExtra("ResultCode", this.getResultCode());
 			receivedIntent.putParcelableArrayListExtra("text_messages",
 					getAsTextMessages(intent));
@@ -176,14 +189,14 @@ public class SmsListener extends BroadcastReceiver {
 
 			abortBroadcast();
 		} else if (intent.getAction()
-				.equals(SendReceiveService.SENT_SMS_ACTION)) {
+				.equals(SendReceiveServiceSSS.SENT_SMS_ACTION)) {
 			intent.putExtra("ResultCode", this.getResultCode());
-			intent.setClass(context, SendReceiveService.class);
+			intent.setClass(context, SendReceiveServiceSSS.class);
 			context.startService(intent);
 		} else if (intent.getAction().equals(
-				SendReceiveService.DELIVERED_SMS_ACTION)) {
+				SendReceiveServiceSSS.DELIVERED_SMS_ACTION)) {
 			intent.putExtra("ResultCode", this.getResultCode());
-			intent.setClass(context, SendReceiveService.class);
+			intent.setClass(context, SendReceiveServiceSSS.class);
 			context.startService(intent);
 		}
 	}

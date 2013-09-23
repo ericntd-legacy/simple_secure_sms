@@ -39,11 +39,12 @@ import org.thoughtcrime.securesms.contacts.ContactAccessor;
 import org.thoughtcrime.securesms.contacts.ContactIdentityManager;
 import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.crypto.MasterSecretUtil;
-import org.thoughtcrime.securesms.service.KeyCachingService;
 import org.thoughtcrime.securesms.util.DynamicLanguage;
 import org.thoughtcrime.securesms.util.DynamicTheme;
 import org.thoughtcrime.securesms.util.MemoryCleaner;
 import org.thoughtcrime.securesms.util.Trimmer;
+
+import textsecure.service.KeyCachingServiceSSS;
 
 /**
  * The Activity for application preference display and management.
@@ -315,8 +316,8 @@ public class ApplicationPreferencesActivitySSS extends PassphraseRequiredSherloc
 
             ((CheckBoxPreference)preference).setChecked(true);
 
-            Intent intent = new Intent(ApplicationPreferencesActivitySSS.this, KeyCachingService.class);
-            intent.setAction(KeyCachingService.DISABLE_ACTION);
+            Intent intent = new Intent(ApplicationPreferencesActivitySSS.this, KeyCachingServiceSSS.class);
+            intent.setAction(KeyCachingServiceSSS.DISABLE_ACTION);
             startService(intent);
           }
         });

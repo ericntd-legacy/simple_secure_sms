@@ -19,34 +19,36 @@ import org.thoughtcrime.securesms.service.SystemStateListener;
 import org.thoughtcrime.securesms.transport.UndeliverableMessageException;
 import org.thoughtcrime.securesms.transport.UniversalTransport;
 
-import textsecure.service.SendReceiveService.ToastHandler;
+import textsecure.service.SendReceiveServiceSSS.ToastHandler;
+import textsecure.transport.SmsTransportSSS;
 
-public class SmsSender {
+public class SmsSenderSSS {
 	
 	// debugging
-	private final String TAG = "SmsSender";
+	private final String TAG = "SmsSenderSSS";
 
   private final Context context;
   private final ToastHandler toastHandler;
 
-  public SmsSender(Context context, ToastHandler toastHandler) {
+  public SmsSenderSSS(Context context, ToastHandler toastHandler) {
     this.context      = context;
     this.toastHandler = toastHandler;
   }
 
   public void process(MasterSecret masterSecret, Intent intent) {
-    if (intent.getAction().equals(SendReceiveService.SEND_SMS_ACTION)) {
+    if (intent.getAction().equals(SendReceiveServiceSSS.SEND_SMS_ACTION)) {
       handleSendMessage(masterSecret, intent);
-    } else if (intent.getAction().equals(SendReceiveService.SENT_SMS_ACTION)) {
+    } else if (intent.getAction().equals(SendReceiveServiceSSS.SENT_SMS_ACTION)) {
       handleSentMessage(intent);
-    } else if (intent.getAction().equals(SendReceiveService.DELIVERED_SMS_ACTION)) {
+    } else if (intent.getAction().equals(SendReceiveServiceSSS.DELIVERED_SMS_ACTION)) {
       handleDeliveredMessage(intent);
     }
   }
 
   private void handleSendMessage(MasterSecret masterSecret, Intent intent) {
     long messageId                      = intent.getLongExtra("message_id", -1);
-    UniversalTransport transport        = new UniversalTransport(context, masterSecret);
+    //UniversalTransport transport        = new UniversalTransport(context, masterSecret);
+    SmsTransportSSS smsTransport = new SmsTransportSSS(context, masterSecret);
     EncryptingSmsDatabase database      = DatabaseFactory.getEncryptingSmsDatabase(context);
 
     EncryptingSmsDatabase.Reader reader = null;
@@ -60,7 +62,7 @@ public class SmsSender {
 
       while (reader != null && (record = reader.getNext()) != null) {
         database.markAsSending(record.getId());
-        transport.deliver(record);
+        smsTransport.deliver(record);
       }
     } catch (UndeliverableMessageException ude) {
       Log.w(TAG, ude);

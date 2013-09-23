@@ -50,14 +50,11 @@ import org.thoughtcrime.securesms.database.model.NotificationMmsMessageRecord;
 import org.thoughtcrime.securesms.mms.Slide;
 import org.thoughtcrime.securesms.mms.SlideDeck;
 import org.thoughtcrime.securesms.recipients.Recipient;
-import org.thoughtcrime.securesms.service.SendReceiveService;
 import org.thoughtcrime.securesms.util.Emoji;
 import org.thoughtcrime.securesms.util.FutureTaskListener;
 import org.thoughtcrime.securesms.util.ListenableFutureTask;
 
 import org.thoughtcrime.securesms.AutoInitiateActivity;// do i need my own implementation of this activity?
-
-import org.thoughtcrime.securesms.ReceiveKeyActivity;// do i need my own implementation of this activity? 
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -96,7 +93,7 @@ public class ConversationItemSSS extends LinearLayout {
   private  ListenableFutureTask<SlideDeck> slideDeck;
 
   private final FailedIconClickListener failedIconClickListener   = new FailedIconClickListener();
-  private final MmsDownloadClickListener mmsDownloadClickListener = new MmsDownloadClickListener();
+  //private final MmsDownloadClickListener mmsDownloadClickListener = new MmsDownloadClickListener();
   private final ClickListener clickListener                       = new ClickListener();
   private final Handler handler                                   = new Handler();
   private final Context context;
@@ -130,7 +127,7 @@ public class ConversationItemSSS extends LinearLayout {
 
     setOnClickListener(clickListener);
     this.failedImage.setOnClickListener(failedIconClickListener);
-    this.mmsDownloadButton.setOnClickListener(mmsDownloadClickListener);
+    //this.mmsDownloadButton.setOnClickListener(mmsDownloadClickListener);
   }
 
   public void set(MasterSecret masterSecret, MessageRecord messageRecord,
@@ -328,7 +325,7 @@ public class ConversationItemSSS extends LinearLayout {
   /// Event handlers
 
   private void handleKeyExchangeClicked() {
-    Intent intent = new Intent(context, ReceiveKeyActivity.class);
+    Intent intent = new Intent(context, ReceiveKeyActivitySSS.class);
     intent.putExtra("recipient", messageRecord.getIndividualRecipient());
     intent.putExtra("body", messageRecord.getBody().getBody());
     intent.putExtra("thread_id", messageRecord.getThreadId());
@@ -485,22 +482,22 @@ public class ConversationItemSSS extends LinearLayout {
     }
   }
 
-  private class MmsDownloadClickListener implements View.OnClickListener {
+  /*private class MmsDownloadClickListener implements View.OnClickListener {
     public void onClick(View v) {
       NotificationMmsMessageRecord notificationRecord = (NotificationMmsMessageRecord)messageRecord;
       Log.w("MmsDownloadClickListener", "Content location: " + new String(notificationRecord.getContentLocation()));
       mmsDownloadButton.setVisibility(View.GONE);
       mmsDownloadingLabel.setVisibility(View.VISIBLE);
 
-      Intent intent = new Intent(context, SendReceiveService.class);
+      Intent intent = new Intent(context, SendReceiveServiceSSS.class);
       intent.putExtra("content_location", new String(notificationRecord.getContentLocation()));
       intent.putExtra("message_id", notificationRecord.getId());
       intent.putExtra("transaction_id", notificationRecord.getTransactionId());
       intent.putExtra("thread_id", notificationRecord.getThreadId());
-      intent.setAction(SendReceiveService.DOWNLOAD_MMS_ACTION);
+      intent.setAction(SendReceiveServiceSSS.DOWNLOAD_MMS_ACTION);
       context.startService(intent);
     }
-  }
+  }*/
 
   private class FailedIconClickListener implements View.OnClickListener {
     public void onClick(View v) {

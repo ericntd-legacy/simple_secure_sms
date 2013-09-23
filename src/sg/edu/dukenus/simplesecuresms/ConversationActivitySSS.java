@@ -56,8 +56,6 @@ import org.thoughtcrime.securesms.PassphraseRequiredSherlockFragmentActivity;
 import org.thoughtcrime.securesms.components.EmojiDrawer;
 import org.thoughtcrime.securesms.components.EmojiToggle;
 import org.thoughtcrime.securesms.components.RecipientsPanel;
-import org.thoughtcrime.securesms.crypto.KeyExchangeInitiator;
-import org.thoughtcrime.securesms.crypto.KeyExchangeProcessor;
 import org.thoughtcrime.securesms.crypto.KeyUtil;
 import org.thoughtcrime.securesms.crypto.MasterCipher;
 import org.thoughtcrime.securesms.crypto.MasterSecret;
@@ -76,8 +74,6 @@ import org.thoughtcrime.securesms.protocol.Tag;
 import org.thoughtcrime.securesms.recipients.Recipient;
 import org.thoughtcrime.securesms.recipients.RecipientFormattingException;
 import org.thoughtcrime.securesms.recipients.Recipients;
-import org.thoughtcrime.securesms.service.KeyCachingService;
-import org.thoughtcrime.securesms.sms.MessageSender;
 import org.thoughtcrime.securesms.sms.OutgoingEncryptedMessage;
 import org.thoughtcrime.securesms.sms.OutgoingTextMessage;
 import org.thoughtcrime.securesms.util.BitmapDecodingException;
@@ -93,6 +89,10 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
+import textsecure.crypto.KeyExchangeInitiatorSSS;
+import textsecure.crypto.KeyExchangeProcessorSSS;
+import textsecure.service.KeyCachingServiceSSS;
+import textsecure.sms.MessageSenderSSS;
 import ws.com.google.android.mms.MmsException;
 
 /**
@@ -102,7 +102,7 @@ import ws.com.google.android.mms.MmsException;
  * @author Moxie Marlinspike
  *
  */
-public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentActivity
+public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentActivitySSS
     implements ConversationFragmentSSS.ConversationFragmentListener
 {
 	// debugging
@@ -377,9 +377,9 @@ public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentA
     builder.setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
       @Override
       public void onClick(DialogInterface dialog, int which) {
-        KeyExchangeInitiator.initiate(ConversationActivitySSS.this, masterSecret,
+        KeyExchangeInitiatorSSS.initiate(ConversationActivitySSS.this, masterSecret,
                                       recipient, true);
-        Log.i(TAG, "a initiating secure session with master secret includes encryption key: "+masterSecret.getEncryptionKey()+ " and mac key: " + masterSecret.getMacKey() + " and recipient is "+recipient.toString());
+        Log.i(TAG, "Initiating secure session with master secret includes encryption key: "+masterSecret.getEncryptionKey()+ " and mac key: " + masterSecret.getMacKey() + " and recipient is "+recipient.toString());
       }
     });
 
@@ -688,8 +688,8 @@ public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentA
     };
 
     registerReceiver(securityUpdateReceiver,
-                     new IntentFilter(KeyExchangeProcessor.SECURITY_UPDATE_EVENT),
-                     KeyCachingService.KEY_PERMISSION, null);
+                     new IntentFilter(KeyExchangeProcessorSSS.SECURITY_UPDATE_EVENT),
+                     KeyCachingServiceSSS.KEY_PERMISSION, null);
   }
 
 
@@ -884,13 +884,15 @@ public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentA
       long allocatedThreadId;
 
       if (attachmentManager.isAttachmentPresent()) {
-        allocatedThreadId = MessageSender.sendMms(ConversationActivitySSS.this, masterSecret, recipients,
+        /*allocatedThreadId = MessageSenderSSS.sendMms(ConversationActivitySSS.this, masterSecret, recipients,
                                                   threadId, attachmentManager.getSlideDeck(), body,
-                                                  distributionType, isEncryptedConversation && !forcePlaintext);
+                                                  distributionType, isEncryptedConversation && !forcePlaintext);*/
+    	  allocatedThreadId = -100;
       } else if (recipients.isEmailRecipient() || !recipients.isSingleRecipient()) {
-        allocatedThreadId = MessageSender.sendMms(ConversationActivitySSS.this, masterSecret, recipients,
+        /*allocatedThreadId = MessageSenderSSS.sendMms(ConversationActivitySSS.this, masterSecret, recipients,
                                                   threadId, new SlideDeck(), body, distributionType,
-                                                  isEncryptedConversation && !forcePlaintext);
+                                                  isEncryptedConversation && !forcePlaintext);*/
+    	  allocatedThreadId = -100;
       } else {
         OutgoingTextMessage message;
 
@@ -901,7 +903,7 @@ public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentA
         }
 
         Log.w(TAG, "Sending message...");
-        allocatedThreadId = MessageSender.send(ConversationActivitySSS.this, masterSecret,
+        allocatedThreadId = MessageSenderSSS.send(ConversationActivitySSS.this, masterSecret,
                                                message, threadId);
       }
 
@@ -915,9 +917,9 @@ public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentA
       Toast.makeText(ConversationActivitySSS.this, R.string.ConversationActivity_message_is_empty_exclamation,
                      Toast.LENGTH_SHORT).show();
       Log.w(TAG, ex);
-    } catch (MmsException e) {
+    } /*catch (MmsException e) {
       Log.w("ComposeMessageActivity", e);
-    }
+    }*/
   }
 
   // Listeners

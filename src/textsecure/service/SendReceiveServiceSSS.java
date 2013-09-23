@@ -15,7 +15,6 @@ import android.widget.Toast;
 
 import org.thoughtcrime.securesms.crypto.MasterSecret;
 import org.thoughtcrime.securesms.database.CanonicalSessionMigrator;
-import org.thoughtcrime.securesms.service.KeyCachingService;
 import org.thoughtcrime.securesms.util.WorkerThread;
 
 import java.util.Iterator;
@@ -28,30 +27,30 @@ import java.util.List;
  * @author Moxie Marlinspike
  */
 
-public class SendReceiveService extends Service {
+public class SendReceiveServiceSSS extends Service {
 	// debugging
-	private final String TAG = "SendReceiveService";
+	private final String TAG = "SendReceiveServiceSSS";
 
 	public static final String SEND_SMS_ACTION = "org.thoughtcrime.securesms.SendReceiveService.SEND_SMS_ACTION";
 	public static final String SENT_SMS_ACTION = "org.thoughtcrime.securesms.SendReceiveService.SENT_SMS_ACTION";
 	public static final String DELIVERED_SMS_ACTION = "org.thoughtcrime.securesms.SendReceiveService.DELIVERED_SMS_ACTION";
 	public static final String RECEIVE_SMS_ACTION = "org.thoughtcrime.securesms.SendReceiveService.RECEIVE_SMS_ACTION";
-	public static final String SEND_MMS_ACTION = "org.thoughtcrime.securesms.SendReceiveService.SEND_MMS_ACTION";
+	/*public static final String SEND_MMS_ACTION = "org.thoughtcrime.securesms.SendReceiveService.SEND_MMS_ACTION";
 	public static final String SEND_MMS_CONNECTIVITY_ACTION = "org.thoughtcrime.securesms.SendReceiveService.SEND_MMS_CONNECTIVITY_ACTION";
 	public static final String RECEIVE_MMS_ACTION = "org.thoughtcrime.securesms.SendReceiveService.RECEIVE_MMS_ACTION";
 	public static final String DOWNLOAD_MMS_ACTION = "org.thoughtcrime.securesms.SendReceiveService.DOWNLOAD_MMS_ACTION";
-	public static final String DOWNLOAD_MMS_CONNECTIVITY_ACTION = "org.thoughtcrime.securesms.SendReceiveService.DOWNLOAD_MMS_CONNECTIVITY_ACTION";
+	public static final String DOWNLOAD_MMS_CONNECTIVITY_ACTION = "org.thoughtcrime.securesms.SendReceiveService.DOWNLOAD_MMS_CONNECTIVITY_ACTION";*/
 
 	private static final int SEND_SMS = 0;
 	private static final int RECEIVE_SMS = 1;
-	private static final int SEND_MMS = 2;
+	/*private static final int SEND_MMS = 2;
 	private static final int RECEIVE_MMS = 3;
-	private static final int DOWNLOAD_MMS = 4;
+	private static final int DOWNLOAD_MMS = 4;*/
 
 	private ToastHandler toastHandler;
 
-	private SmsReceiver smsReceiver;
-	private SmsSender smsSender;
+	private SmsReceiverSSS smsReceiver;
+	private SmsSenderSSS smsSender;
 	/*private MmsReceiver mmsReceiver;
 	private MmsSender mmsSender;
 	private MmsDownloader mmsDownloader;
@@ -67,19 +66,35 @@ public class SendReceiveService extends Service {
 
 	@Override
 	public void onCreate() {
+		Log.w(TAG, TAG + " created");
 		initializeHandlers();
 		initializeProcessors();
 		initializeAddressCanonicalization();
 		initializeWorkQueue();
 		initializeMasterSecret();
 	}
-
+	
+	// This is the old onStart method that will be called on the pre-2.0
+	// platform.  On 2.0 or later we override onStartCommand() so this
+	// method will not be called.
 	@Override
 	public void onStart(Intent intent, int startId) {
+	    handleStartCommand(intent);
+	}
+
+	@Override
+	public int onStartCommand(Intent intent, int flags, int startId) {
+		handleStartCommand(intent);
+	    // We want this service to continue running until it is explicitly
+	    // stopped, so return sticky.
+	    return START_STICKY;
+	}
+
+	public void handleStartCommand(Intent intent) {
 		if (intent == null)
 			return;
 
-		Log.w(TAG, "sendreceiveservice started and running");
+		Log.w(TAG, TAG + " started and running");
 
 		if (intent.getAction().equals(SEND_SMS_ACTION))
 			scheduleSecretRequiredIntent(SEND_SMS, intent);
@@ -89,14 +104,14 @@ public class SendReceiveService extends Service {
 			scheduleIntent(SEND_SMS, intent);
 		else if (intent.getAction().equals(DELIVERED_SMS_ACTION))
 			scheduleIntent(SEND_SMS, intent);
-		else if (intent.getAction().equals(SEND_MMS_ACTION)
+		/*else if (intent.getAction().equals(SEND_MMS_ACTION)
 				|| intent.getAction().equals(SEND_MMS_CONNECTIVITY_ACTION))
 			scheduleSecretRequiredIntent(SEND_MMS, intent);
 		else if (intent.getAction().equals(RECEIVE_MMS_ACTION))
 			scheduleIntent(RECEIVE_MMS, intent);
 		else if (intent.getAction().equals(DOWNLOAD_MMS_ACTION)
 				|| intent.getAction().equals(DOWNLOAD_MMS_CONNECTIVITY_ACTION))
-			scheduleSecretRequiredIntent(DOWNLOAD_MMS, intent);
+			scheduleSecretRequiredIntent(DOWNLOAD_MMS, intent);*/
 		else
 			Log.w(TAG,
 					"Received intent with unknown action: "
@@ -106,6 +121,14 @@ public class SendReceiveService extends Service {
 	@Override
 	public IBinder onBind(Intent intent) {
 		return null;
+	}
+	
+	@Override
+	public boolean onUnbind(Intent intent) {
+		super.onUnbind(intent);
+		
+		Log.w(TAG, "the service is unbound");
+		return true;
 	}
 
 	@Override
@@ -118,6 +141,8 @@ public class SendReceiveService extends Service {
 
 		if (clearKeyReceiver != null)
 			unregisterReceiver(clearKeyReceiver);
+		
+		unbindService(serviceConnection);
 	}
 
 	private void initializeHandlers() {
@@ -125,8 +150,8 @@ public class SendReceiveService extends Service {
 	}
 
 	private void initializeProcessors() {
-		smsReceiver = new SmsReceiver(this);
-		smsSender = new SmsSender(this, toastHandler);
+		smsReceiver = new SmsReceiverSSS(this);
+		smsSender = new SmsSenderSSS(this, toastHandler);
 		/*mmsReceiver = new MmsReceiver(this);
 		mmsSender = new MmsSender(this, toastHandler);
 		mmsDownloader = new MmsDownloader(this, toastHandler);*/
@@ -146,17 +171,17 @@ public class SendReceiveService extends Service {
 		clearKeyReceiver = new ClearKeyReceiver();
 
 		IntentFilter newKeyFilter = new IntentFilter(
-				KeyCachingService.NEW_KEY_EVENT);
+				KeyCachingServiceSSS.NEW_KEY_EVENT);
 		registerReceiver(newKeyReceiver, newKeyFilter,
-				KeyCachingService.KEY_PERMISSION, null);
+				KeyCachingServiceSSS.KEY_PERMISSION, null);
 
 		IntentFilter clearKeyFilter = new IntentFilter(
-				KeyCachingService.CLEAR_KEY_EVENT);
+				KeyCachingServiceSSS.CLEAR_KEY_EVENT);
 		registerReceiver(clearKeyReceiver, clearKeyFilter,
-				KeyCachingService.KEY_PERMISSION, null);
+				KeyCachingServiceSSS.KEY_PERMISSION, null);
 
-		Intent bindIntent = new Intent(this, KeyCachingService.class);
-		bindService(bindIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+		Intent bindIntent = new Intent(this, KeyCachingServiceSSS.class);
+		bindService(bindIntent, serviceConnection, Context.BIND_AUTO_CREATE);// binding what to what here?
 	}
 
 	private void initializeWithMasterSecret(MasterSecret masterSecret) {
@@ -181,16 +206,18 @@ public class SendReceiveService extends Service {
 	}
 
 	private void scheduleIntent(int what, Intent intent) {
+		Log.w(TAG, "adding work (Receive SMS, receive Sent SMS status or receive Delivered SMS status) to the work queue");
 		Runnable work = new SendReceiveWorkItem(intent, what);
 
 		synchronized (workQueue) {
+			Log.w(TAG, "there are currently "+workQueue.size()+" works in the work queue");
 			workQueue.add(work);
 			workQueue.notifyAll();
 		}
 	}
 
 	private void scheduleSecretRequiredIntent(int what, Intent intent) {
-		Log.w(TAG, "some work was actually scheduled to be done");
+		Log.w(TAG, "adding Send SMS work to the work queue");
 		Runnable work = new SendReceiveWorkItem(intent, what);
 		
 		synchronized (workQueue) {// why is synchronized is used here? is it to
@@ -201,12 +228,13 @@ public class SendReceiveService extends Service {
 			/*workQueue.clear();
 			workQueue.add(work);
 			workQueue.notifyAll();*/
-			if (hasSecret) {
+			Log.w(TAG, "there are currently "+workQueue.size()+" works in the work queue and hasSecret is "+hasSecret);
+			//if (hasSecret) {
 				workQueue.add(work);
 				workQueue.notifyAll();
-			} else {
-				pendingSecretList.add(work);
-			}
+			//} else {
+			//	pendingSecretList.add(work);
+			//}
 		}
 	}
 
@@ -251,7 +279,7 @@ public class SendReceiveService extends Service {
 
 		@Override
 		public void handleMessage(Message message) {
-			Toast.makeText(SendReceiveService.this, (String) message.obj,
+			Toast.makeText(SendReceiveServiceSSS.this, (String) message.obj,
 					Toast.LENGTH_LONG).show();
 		}
 	}
@@ -259,13 +287,14 @@ public class SendReceiveService extends Service {
 	private ServiceConnection serviceConnection = new ServiceConnection() {
 		@Override
 		public void onServiceConnected(ComponentName className, IBinder service) {
-			KeyCachingService keyCachingService = ((KeyCachingService.KeyCachingBinder) service)
+			Log.w(TAG, "SendReceiveServiceSSS is connected to "+className.toString());
+			KeyCachingServiceSSS keyCachingService = ((KeyCachingServiceSSS.KeyCachingBinder) service)
 					.getService();
 			MasterSecret masterSecret = keyCachingService.getMasterSecret();
 
 			initializeWithMasterSecret(masterSecret);
 
-			SendReceiveService.this.unbindService(this);
+			SendReceiveServiceSSS.this.unbindService(this);
 		}
 
 		@Override
@@ -306,16 +335,16 @@ public class SendReceiveService extends Service {
 			Log.w(TAG, "Got a clear mastersecret broadcast...");
 
 			synchronized (workQueue) {
-				SendReceiveService.this.hasSecret = false;
+				SendReceiveServiceSSS.this.hasSecret = false;
 				workQueue.add(new Runnable() {
 					@Override
 					public void run() {
 						Log.w(TAG, "Running clear key work item...");
 
 						synchronized (workQueue) {
-							if (!SendReceiveService.this.hasSecret) {
+							if (!SendReceiveServiceSSS.this.hasSecret) {
 								Log.w(TAG, "Actually clearing key...");
-								SendReceiveService.this.masterSecret = null;
+								SendReceiveServiceSSS.this.masterSecret = null;
 							}
 						}
 					}
