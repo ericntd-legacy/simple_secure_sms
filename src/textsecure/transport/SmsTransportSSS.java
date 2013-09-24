@@ -23,6 +23,8 @@ import org.thoughtcrime.securesms.transport.UndeliverableMessageException;
 import java.util.ArrayList;
 
 public class SmsTransportSSS {
+	//debugging
+	private final String TAG = "SmsTransportSSS";
 
   private final Context context;
   private final MasterSecret masterSecret;
@@ -41,6 +43,7 @@ public class SmsTransportSSS {
   }
 
   private void deliverSecureMessage(SmsMessageRecord message) throws UndeliverableMessageException {
+	  Log.w(TAG, "the message record being delivered is "+message.getDisplayBody());
     MultipartSmsMessageHandler multipartMessageHandler = new MultipartSmsMessageHandler();
     OutgoingTextMessage transportMessage               = OutgoingTextMessage.from(message);
 
@@ -54,7 +57,7 @@ public class SmsTransportSSS {
     ArrayList<PendingIntent> sentIntents      = constructSentIntents(message.getId(), message.getType(), messages);
     ArrayList<PendingIntent> deliveredIntents = constructDeliveredIntents(message.getId(), message.getType(), messages);
 
-    Log.w("SmsTransport", "Secure divide into message parts: " + messages.size());
+    Log.w(TAG, "Secure divide into message parts: " + messages.size());
 
     for (int i=0;i<messages.size();i++) {
       // XXX moxie@thoughtcrime.org 1/7/11 -- There's apparently a bug where for some unknown recipients
@@ -66,10 +69,10 @@ public class SmsTransportSSS {
                                                 sentIntents.get(i),
                                                 deliveredIntents == null ? null : deliveredIntents.get(i));
       } catch (NullPointerException npe) {
-        Log.w("SmsSender", npe);
+        Log.w(TAG, npe);
         throw new UndeliverableMessageException(npe);
       } catch (IllegalArgumentException iae) {
-        Log.w("SmsSender", iae);
+        Log.w(TAG, iae);
         throw new UndeliverableMessageException(iae);
       }
     }
@@ -91,7 +94,7 @@ public class SmsTransportSSS {
     try {
       SmsManager.getDefault().sendMultipartTextMessage(recipient, null, messages, sentIntents, deliveredIntents);
     } catch (NullPointerException npe) {
-      Log.w("SmsTransport", npe);
+      Log.w(TAG, npe);
       throw new UndeliverableMessageException(npe);
     }
   }

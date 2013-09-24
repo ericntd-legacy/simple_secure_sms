@@ -142,15 +142,15 @@ public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentA
   private boolean isMmsEnabled = true;
 
   private CharacterCalculator characterCalculator = new CharacterCalculator();
-  //private DynamicTheme        dynamicTheme        = new DynamicTheme();
+  private DynamicTheme        dynamicTheme        = new DynamicTheme();
   //private DynamicLanguage     dynamicLanguage     = new DynamicLanguage();
 
   @Override
   protected void onCreate(Bundle state) {
-    //dynamicTheme.onCreate(this);
+    dynamicTheme.onCreate(this);
     //dynamicLanguage.onCreate(this);
     super.onCreate(state);
-
+    Log.w(TAG, TAG + " onCreate");
     setContentView(R.layout.conversation_activity);
     getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
@@ -163,7 +163,7 @@ public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentA
   @Override
   protected void onStart() {
     super.onStart();
-
+    Log.w(TAG, TAG + " onStart");
     if (!isExistingConversation())
       initializeRecipientsInput();
   }
@@ -171,13 +171,13 @@ public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentA
   @Override
   protected void onResume() {
     super.onResume();
-    //dynamicTheme.onResume(this);
+    dynamicTheme.onResume(this);
     //dynamicLanguage.onResume(this);
-
+    Log.w(TAG, TAG + " onResume");
     initializeSecurity();
     initializeTitleBar();
-    initializeMmsEnabledCheck();
-    initializeIme();
+    //initializeMmsEnabledCheck();
+    //initializeIme();
     calculateCharactersRemaining();
 
     MessageNotifier.setVisibleThread(threadId);
@@ -187,8 +187,15 @@ public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentA
   @Override
   protected void onPause() {
     super.onPause();
+    Log.w(TAG, TAG + " onPause");
     MessageNotifier.setVisibleThread(-1L);
   }
+  
+  /*@Override
+  protected void onStop() {
+	  Log.w(TAG, TAG + " onStop");
+	  super.onStop();
+  }*/
 
   @Override
   protected void onDestroy() {
@@ -196,6 +203,7 @@ public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentA
     saveDraft();
     MemoryCleaner.clean(masterSecret);
     super.onDestroy();
+    Log.w(TAG, TAG + " onDestroy");
   }
 
   @Override
@@ -505,6 +513,7 @@ public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentA
   ///// Initializers
 
   private void initializeTitleBar() {
+	  Log.w(TAG, "initializing the title bar");
     String title    = null;
     String subtitle = null;
 
@@ -574,6 +583,7 @@ public class ConversationActivitySSS extends PassphraseRequiredSherlockFragmentA
   }
 
   private void initializeSecurity() {
+	  Log.w(TAG, "initializing Security");
     int        attributes[] = new int[]{R.attr.conversation_send_button,
                                         R.attr.conversation_send_secure_button};
     TypedArray drawables    = obtainStyledAttributes(attributes);

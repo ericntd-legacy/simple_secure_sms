@@ -90,7 +90,7 @@
               android:configChanges="touchscreen|keyboard|keyboardHidden|orientation|screenLayout|screenSize"/>
 		
         <service android:enabled="true" android:name="textsecure.service.SendReceiveServiceSSS"/>
-        <service android:enabled="true" android:name="textsecure.service.KeyCachingService"/>
+        <service android:enabled="true" android:name="textsecure.service.KeyCachingServiceSSS"/>
         
         <receiver android:name="textsecure.service.SmsListenerSSS"
               android:enabled="true"
@@ -98,9 +98,10 @@
              <intent-filter android:priority="1001">
                  <action android:name="android.provider.Telephony.SMS_RECEIVED"></action>
              </intent-filter>
-             <intent-filter>
-                 <action android:name="org.thoughtcrime.securesms.services.MESSAGE_SENT"></action> <!-- Where is this defined? -->
-             </intent-filter>
+             <!-- Where is this defined? -->
+             <!-- <intent-filter>
+                 <action android:name="org.thoughtcrime.securesms.services.MESSAGE_SENT"></action>
+             </intent-filter>-->
     	</receiver>
     </application>
 

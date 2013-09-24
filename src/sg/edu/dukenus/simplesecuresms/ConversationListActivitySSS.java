@@ -7,6 +7,7 @@ import java.util.List;
 import org.thoughtcrime.securesms.ApplicationPreferencesActivity;
 import org.thoughtcrime.securesms.ConversationListFragment;
 import org.thoughtcrime.securesms.ImportExportActivity;
+import org.thoughtcrime.securesms.PassphraseActivity;
 import org.thoughtcrime.securesms.PassphraseCreateActivity;
 import org.thoughtcrime.securesms.PassphraseRequiredSherlockFragmentActivity;
 import org.thoughtcrime.securesms.ReviewIdentitiesActivity;
@@ -24,6 +25,7 @@ import org.thoughtcrime.securesms.util.MemoryCleaner;
 
 import org.thoughtcrime.securesms.recipients.Recipients;
 import org.thoughtcrime.securesms.recipients.RecipientFactory;
+import org.thoughtcrime.securesms.service.KeyCachingService;
 
 import textsecure.service.KeyCachingServiceSSS;
 import textsecure.service.SendReceiveServiceSSS;
@@ -35,11 +37,15 @@ import com.actionbarsherlock.view.Menu;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.provider.ContactsContract;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.res.TypedArray;
 import android.database.ContentObserver;
 import android.util.Log;
@@ -51,7 +57,7 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 
 public class ConversationListActivitySSS extends
-		PassphraseRequiredSherlockFragmentActivity implements
+		PassphraseRequiredSherlockFragmentActivitySSS implements
 		ConversationListFragmentSSS.ConversationSelectedListener,
 		ListView.OnItemClickListener {
 	// debugging
@@ -73,7 +79,8 @@ public class ConversationListActivitySSS extends
 		dynamicTheme.onCreate(this);
 		//dynamicLanguage.onCreate(this);
 		super.onCreate(icicle);
-
+		Log.w(TAG, TAG + " onCreate...");
+		
 		setContentView(R.layout.activity_conversation_list_activity_sss);
 		getSupportActionBar().setTitle(APP_NAME);
 
@@ -86,21 +93,36 @@ public class ConversationListActivitySSS extends
 	@Override
 	public void onResume() {
 		super.onResume();
+		if (D) Log.w(TAG, TAG + " onResume...");
 		dynamicTheme.onResume(this);
 		//dynamicLanguage.onResume(this);
 	}
 
 	@Override
 	public void onDestroy() {
-		if (D) Log.w(TAG, "onDestroy...");
+		if (D) Log.w(TAG, TAG + "onDestroy...");
 		MemoryCleaner.clean(masterSecret);
 		super.onDestroy();
 	}
+	
+	/*@Override
+	public void onPause() {
+		super.onPause();
+		if (D) Log.w(TAG, TAG + " onPause...");
+	}*/
+	
+	/*@Override
+	public void onStop() {
+		super.onStop();
+		if (D) Log.w(TAG, TAG + " onStop...");
+	}*/
 
 	@Override
 	public void onMasterSecretCleared() {
 		// this.fragment.setMasterSecret(null);
-		startActivity(new Intent(this, RoutingActivity.class));
+		Log.w(TAG, "onMasterSecretCleared");
+		// what to do here?
+		//startActivity(new Intent(this, ConversationListActivitySSS.class));
 		super.onMasterSecretCleared();
 	}
 
@@ -281,6 +303,10 @@ public class ConversationListActivitySSS extends
 	}*/
 
 	private void initializeSenderReceiverService() {
+		Intent bindIntent = new Intent(this, KeyCachingServiceSSS.class);
+	    bindService(bindIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+	    
+		// why is SendReceiveServiceSSS initialised with Intent of SEND_SMS_ACTION?
 		Intent smsSenderIntent = new Intent(SendReceiveServiceSSS.SEND_SMS_ACTION,
 				null, this, SendReceiveServiceSSS.class);
 		/*Intent mmsSenderIntent = new Intent(SendReceiveServiceSSS.SEND_MMS_ACTION,
@@ -306,6 +332,31 @@ public class ConversationListActivitySSS extends
 		this.fragment = (ConversationListFragmentSSS) this.getSupportFragmentManager().findFragmentById(R.id.fragment_content);
 
 		this.fragment.setMasterSecret(masterSecret);
+		
+		//TODO: to start KeyCachingServiceSSS
+		// Do I need to bind KeyCachingServiceSSS to something?
+		
 	}
+	private KeyCachingServiceSSS keyCachingService;
+	private ServiceConnection serviceConnection = new ServiceConnection() {
+	      @Override
+	      public void onServiceConnected(ComponentName className, IBinder service) {
+	        keyCachingService = ((KeyCachingServiceSSS.KeyCachingBinder)service).getService();
+	        keyCachingService.setMasterSecret(masterSecret);
+
+	        ConversationListActivitySSS.this.unbindService(ConversationListActivitySSS.this.serviceConnection);
+
+	        MemoryCleaner.clean(masterSecret);
+	        //cleanup();
+
+	        ConversationListActivitySSS.this.setResult(RESULT_OK);
+	        ConversationListActivitySSS.this.finish();
+	      }
+
+	      @Override
+	      public void onServiceDisconnected(ComponentName name) {
+	        keyCachingService = null;
+	      }
+	  };
 
 }

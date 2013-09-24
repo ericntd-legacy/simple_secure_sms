@@ -46,230 +46,265 @@ import textsecure.crypto.DecryptingQueueSSS;
 
 /**
  * Small service that stays running to keep a key cached in memory.
- *
+ * 
  * @author Moxie Marlinspike
  */
 
 public class KeyCachingServiceSSS extends Service {
-	
+
 	// debugging
 	private final String TAG = "KeyCachingServiceSSS";
 
-  public static final int SERVICE_RUNNING_ID = 4141;
+	public static final int SERVICE_RUNNING_ID = 4141;
 
-  public  static final String KEY_PERMISSION           = "org.thoughtcrime.securesms.ACCESS_SECRETS";
-  public  static final String NEW_KEY_EVENT            = "org.thoughtcrime.securesms.service.action.NEW_KEY_EVENT";
-  public  static final String CLEAR_KEY_EVENT          = "org.thoughtcrime.securesms.service.action.CLEAR_KEY_EVENT";
-  private static final String PASSPHRASE_EXPIRED_EVENT = "org.thoughtcrime.securesms.service.action.PASSPHRASE_EXPIRED_EVENT";
-  public  static final String CLEAR_KEY_ACTION         = "org.thoughtcrime.securesms.service.action.CLEAR_KEY";
-  public  static final String DISABLE_ACTION           = "org.thoughtcrime.securesms.service.action.DISABLE";
-  public  static final String ACTIVITY_START_EVENT     = "org.thoughtcrime.securesms.service.action.ACTIVITY_START_EVENT";
-  public  static final String ACTIVITY_STOP_EVENT      = "org.thoughtcrime.securesms.service.action.ACTIVITY_STOP_EVENT";
+	public static final String KEY_PERMISSION = "org.thoughtcrime.securesms.ACCESS_SECRETS";
+	public static final String NEW_KEY_EVENT = "org.thoughtcrime.securesms.service.action.NEW_KEY_EVENT";
+	public static final String CLEAR_KEY_EVENT = "org.thoughtcrime.securesms.service.action.CLEAR_KEY_EVENT";
+	private static final String PASSPHRASE_EXPIRED_EVENT = "org.thoughtcrime.securesms.service.action.PASSPHRASE_EXPIRED_EVENT";
+	public static final String CLEAR_KEY_ACTION = "org.thoughtcrime.securesms.service.action.CLEAR_KEY";
+	public static final String DISABLE_ACTION = "org.thoughtcrime.securesms.service.action.DISABLE";
+	public static final String ACTIVITY_START_EVENT = "org.thoughtcrime.securesms.service.action.ACTIVITY_START_EVENT";
+	public static final String ACTIVITY_STOP_EVENT = "org.thoughtcrime.securesms.service.action.ACTIVITY_STOP_EVENT";
 
-  private PendingIntent pending;
-  private int activitiesRunning = 0;
-  private final IBinder binder  = new KeyCachingBinder();
+	private PendingIntent pending;
+	private int activitiesRunning = 0;
+	private final IBinder binder = new KeyCachingBinder();
 
-  private MasterSecret masterSecret;
+	private MasterSecret masterSecret;
 
-  public KeyCachingServiceSSS() {}
+	public KeyCachingServiceSSS() {
+	}
 
-  public synchronized MasterSecret getMasterSecret() {
-    return masterSecret;
-  }
+	public synchronized MasterSecret getMasterSecret() {
+		return masterSecret;
+	}
 
-  public synchronized void setMasterSecret(final MasterSecret masterSecret) {
-    this.masterSecret = masterSecret;
+	public synchronized void setMasterSecret(final MasterSecret masterSecret) {
+		this.masterSecret = masterSecret;
+		Log.w(TAG, TAG + "mastersecret is set to " + this.masterSecret.toString());
 
-    foregroundService();
-    broadcastNewSecret();
-    startTimeoutIfAppropriate();
+		foregroundService();
+		broadcastNewSecret();
+		startTimeoutIfAppropriate();
 
-    new AsyncTask<Void, Void, Void>() {
-      @Override
-      protected Void doInBackground(Void... params) {
-        if (!DatabaseUpgradeActivity.isUpdate(KeyCachingServiceSSS.this)) {
-          DecryptingQueueSSS.schedulePendingDecrypts(KeyCachingServiceSSS.this, masterSecret);
-          MessageNotifier.updateNotification(KeyCachingServiceSSS.this, masterSecret);
-        }
-        return null;
-      }
-    }.execute();
-  }
+		new AsyncTask<Void, Void, Void>() {
+			@Override
+			protected Void doInBackground(Void... params) {
+				if (!DatabaseUpgradeActivity
+						.isUpdate(KeyCachingServiceSSS.this)) {
+					DecryptingQueueSSS.schedulePendingDecrypts(
+							KeyCachingServiceSSS.this, masterSecret);
+					MessageNotifier.updateNotification(
+							KeyCachingServiceSSS.this, masterSecret);
+				}
+				return null;
+			}
+		}.execute();
+	}
 
-  @Override
-  public int onStartCommand(Intent intent, int flags, int startId) {
-    if (intent == null) return START_NOT_STICKY;
+	@Override
+	public int onStartCommand(Intent intent, int flags, int startId) {
+		
+		if (intent == null)
+			return START_NOT_STICKY;
+		Log.w(TAG, TAG + " is started by "+intent.describeContents()+" startId = "+startId);
+		
+		if (intent.getAction() != null
+				&& intent.getAction().equals(CLEAR_KEY_ACTION))
+			handleClearKey();
+		else if (intent.getAction() != null
+				&& intent.getAction().equals(ACTIVITY_START_EVENT))
+			handleActivityStarted();
+		else if (intent.getAction() != null
+				&& intent.getAction().equals(ACTIVITY_STOP_EVENT))
+			handleActivityStopped();
+		else if (intent.getAction() != null
+				&& intent.getAction().equals(PASSPHRASE_EXPIRED_EVENT))
+			handleClearKey();
+		else if (intent.getAction() != null
+				&& intent.getAction().equals(DISABLE_ACTION))
+			handleDisableService();
 
-    if (intent.getAction() != null && intent.getAction().equals(CLEAR_KEY_ACTION))
-      handleClearKey();
-    else if (intent.getAction() != null && intent.getAction().equals(ACTIVITY_START_EVENT))
-      handleActivityStarted();
-    else if (intent.getAction() != null && intent.getAction().equals(ACTIVITY_STOP_EVENT))
-      handleActivityStopped();
-    else if (intent.getAction() != null && intent.getAction().equals(PASSPHRASE_EXPIRED_EVENT))
-      handleClearKey();
-    else if (intent.getAction() != null && intent.getAction().equals(DISABLE_ACTION))
-      handleDisableService();
+		return START_NOT_STICKY;
+	}
 
-    return START_NOT_STICKY;
-  }
+	@Override
+	public void onCreate() {
+		super.onCreate();
+		Log.w(TAG, TAG + " is created");
+		this.pending = PendingIntent.getService(this, 0, new Intent(
+				PASSPHRASE_EXPIRED_EVENT, null, this,
+				KeyCachingServiceSSS.class), 0);
 
-  @Override
-  public void onCreate() {
-    super.onCreate();
-    this.pending = PendingIntent.getService(this, 0, new Intent(PASSPHRASE_EXPIRED_EVENT, null,
-                                                                this, KeyCachingServiceSSS.class), 0);
+		if (isPassphraseDisabled()) {
+			try {
+				MasterSecret masterSecret = MasterSecretUtil.getMasterSecret(
+						this, MasterSecretUtil.UNENCRYPTED_PASSPHRASE);
+				setMasterSecret(masterSecret);
+			} catch (InvalidPassphraseException e) {
+				Log.w(TAG, e);
+			}
+		}
+	}
 
-    if (isPassphraseDisabled()) {
-      try {
-        MasterSecret masterSecret = MasterSecretUtil.getMasterSecret(this, MasterSecretUtil.UNENCRYPTED_PASSPHRASE);
-        setMasterSecret(masterSecret);
-      } catch (InvalidPassphraseException e) {
-        Log.w(TAG, e);
-      }
-    }
-  }
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		Log.w(TAG, TAG + " Is Being Destroyed!");
+		handleClearKey();
+	}
 
-  @Override
-  public void onDestroy() {
-    super.onDestroy();
-    Log.w(TAG, "KCS Is Being Destroyed!");
-    handleClearKey();
-  }
+	private void handleActivityStarted() {
+		Log.w(TAG, "Incrementing activity count...");
 
-  private void handleActivityStarted() {
-    Log.w(TAG, "Incrementing activity count...");
+		AlarmManager alarmManager = (AlarmManager) this
+				.getSystemService(ALARM_SERVICE);
+		alarmManager.cancel(pending);
+		activitiesRunning++;
+	}
 
-    AlarmManager alarmManager = (AlarmManager)this.getSystemService(ALARM_SERVICE);
-    alarmManager.cancel(pending);
-    activitiesRunning++;
-  }
+	private void handleActivityStopped() {
+		Log.w(TAG, "Decrementing activity count...");
 
-  private void handleActivityStopped() {
-    Log.w(TAG, "Decrementing activity count...");
+		activitiesRunning--;
+		startTimeoutIfAppropriate();
+	}
 
-    activitiesRunning--;
-    startTimeoutIfAppropriate();
-  }
+	private void handleClearKey() {
+		this.masterSecret = null;
+		stopForeground(true);
 
-  private void handleClearKey() {
-    this.masterSecret = null;
-    stopForeground(true);
+		Intent intent = new Intent(CLEAR_KEY_EVENT);
+		intent.setPackage(getApplicationContext().getPackageName());
 
-    Intent intent = new Intent(CLEAR_KEY_EVENT);
-    intent.setPackage(getApplicationContext().getPackageName());
+		sendBroadcast(intent, KEY_PERMISSION);
 
-    sendBroadcast(intent, KEY_PERMISSION);
+		new AsyncTask<Void, Void, Void>() {
+			@Override
+			protected Void doInBackground(Void... params) {
+				MessageNotifier.updateNotification(KeyCachingServiceSSS.this,
+						null);
+				return null;
+			}
+		}.execute();
+	}
 
-    new AsyncTask<Void, Void, Void>() {
-      @Override
-      protected Void doInBackground(Void... params) {
-        MessageNotifier.updateNotification(KeyCachingServiceSSS.this, null);
-        return null;
-      }
-    }.execute();
-  }
+	private void handleDisableService() {
+		if (isPassphraseDisabled())
+			stopForeground(true);
+	}
 
-  private void handleDisableService() {
-    if (isPassphraseDisabled())
-      stopForeground(true);
-  }
+	private void startTimeoutIfAppropriate() {
+		SharedPreferences sharedPreferences = PreferenceManager
+				.getDefaultSharedPreferences(this);
+		boolean timeoutEnabled = sharedPreferences.getBoolean(
+				ApplicationPreferencesActivity.PASSPHRASE_TIMEOUT_PREF, false);
 
-  private void startTimeoutIfAppropriate() {
-    SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-    boolean timeoutEnabled              = sharedPreferences.getBoolean(ApplicationPreferencesActivity.PASSPHRASE_TIMEOUT_PREF, false);
+		if ((activitiesRunning == 0) && (this.masterSecret != null)
+				&& timeoutEnabled && !isPassphraseDisabled()) {
+			long timeoutMinutes = sharedPreferences
+					.getInt(ApplicationPreferencesActivity.PASSPHRASE_TIMEOUT_INTERVAL_PREF,
+							60 * 5);
+			long timeoutMillis = timeoutMinutes * 60 * 1000;
 
-    if ((activitiesRunning == 0) && (this.masterSecret != null) && timeoutEnabled && !isPassphraseDisabled()) {
-      long timeoutMinutes = sharedPreferences.getInt(ApplicationPreferencesActivity.PASSPHRASE_TIMEOUT_INTERVAL_PREF, 60 * 5);
-      long timeoutMillis  = timeoutMinutes * 60 * 1000;
+			Log.w(TAG, "Starting timeout: " + timeoutMillis);
 
-      Log.w(TAG, "Starting timeout: " + timeoutMillis);
+			AlarmManager alarmManager = (AlarmManager) this
+					.getSystemService(ALARM_SERVICE);
+			alarmManager.cancel(pending);
+			alarmManager.set(AlarmManager.ELAPSED_REALTIME,
+					SystemClock.elapsedRealtime() + timeoutMillis, pending);
+		}
+	}
 
-      AlarmManager alarmManager = (AlarmManager)this.getSystemService(ALARM_SERVICE);
-      alarmManager.cancel(pending);
-      alarmManager.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + timeoutMillis, pending);
-    }
-  }
+	private void foregroundServiceModern() {
+		Notification notification = new Notification(R.drawable.icon_cached,
+				null, System.currentTimeMillis());
+		RemoteViews remoteViews = new RemoteViews(getPackageName(),
+				R.layout.key_caching_notification);
 
-  private void foregroundServiceModern() {
-    Notification notification = new Notification(R.drawable.icon_cached, null, System.currentTimeMillis());
-    RemoteViews remoteViews   = new RemoteViews(getPackageName(), R.layout.key_caching_notification);
+		Intent intent = new Intent(this, KeyCachingServiceSSS.class);
+		intent.setAction(PASSPHRASE_EXPIRED_EVENT);
+		PendingIntent pendingIntent = PendingIntent.getService(
+				getApplicationContext(), 0, intent, 0);
+		remoteViews
+				.setOnClickPendingIntent(R.id.lock_cache_icon, pendingIntent);
 
-    Intent intent = new Intent(this, KeyCachingServiceSSS.class);
-    intent.setAction(PASSPHRASE_EXPIRED_EVENT);
-    PendingIntent pendingIntent = PendingIntent.getService(getApplicationContext(), 0, intent, 0);
-    remoteViews.setOnClickPendingIntent(R.id.lock_cache_icon, pendingIntent);
+		notification.contentView = remoteViews;
 
-    notification.contentView  = remoteViews;
+		stopForeground(true);
+		startForeground(SERVICE_RUNNING_ID, notification);
+	}
 
-    stopForeground(true);
-    startForeground(SERVICE_RUNNING_ID, notification);
-  }
+	private void foregroundServiceLegacy() {
+		Notification notification = new Notification(
+				R.drawable.icon_cached,
+				getString(R.string.KeyCachingService_textsecure_passphrase_cached),
+				System.currentTimeMillis());
+		Intent intent = new Intent(this, RoutingActivity.class);
+		intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-  private void foregroundServiceLegacy() {
-    Notification notification  = new Notification(R.drawable.icon_cached,
-                                                  getString(R.string.KeyCachingService_textsecure_passphrase_cached),
-                                                  System.currentTimeMillis());
-    Intent intent              = new Intent(this, RoutingActivity.class);
-    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+		PendingIntent launchIntent = PendingIntent.getActivity(
+				getApplicationContext(), 0, intent, 0);
+		notification
+				.setLatestEventInfo(
+						getApplicationContext(),
+						getString(R.string.KeyCachingService_passphrase_cached),
+						getString(R.string.KeyCachingService_textsecure_passphrase_cached),
+						launchIntent);
 
-    PendingIntent launchIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, 0);
-    notification.setLatestEventInfo(getApplicationContext(),
-                                    getString(R.string.KeyCachingService_passphrase_cached),
-                                    getString(R.string.KeyCachingService_textsecure_passphrase_cached),
-                                    launchIntent);
+		stopForeground(true);
+		startForeground(SERVICE_RUNNING_ID, notification);
+	}
 
-    stopForeground(true);
-    startForeground(SERVICE_RUNNING_ID, notification);
-  }
+	private void foregroundService() {
+		if (isPassphraseDisabled()) {
+			stopForeground(true);
+			return;
+		}
 
-  private void foregroundService() {
-    if (isPassphraseDisabled()) {
-      stopForeground(true);
-      return;
-    }
+		if (Build.VERSION.SDK_INT >= 11)
+			foregroundServiceModern();
+		else
+			foregroundServiceLegacy();
+	}
 
-    if (Build.VERSION.SDK_INT >= 11) foregroundServiceModern();
-    else                             foregroundServiceLegacy();
-  }
+	private void broadcastNewSecret() {
+		Log.w("service", "Broadcasting new secret...");
 
-  private void broadcastNewSecret() {
-    Log.w("service", "Broadcasting new secret...");
+		Intent intent = new Intent(NEW_KEY_EVENT);
+		intent.putExtra("master_secret", masterSecret);
+		intent.setPackage(getApplicationContext().getPackageName());
 
-    Intent intent = new Intent(NEW_KEY_EVENT);
-    intent.putExtra("master_secret", masterSecret);
-    intent.setPackage(getApplicationContext().getPackageName());
+		sendBroadcast(intent, KEY_PERMISSION);
+	}
 
-    sendBroadcast(intent, KEY_PERMISSION);
-  }
+	private boolean isPassphraseDisabled() {
+		return PreferenceManager.getDefaultSharedPreferences(this).getBoolean(
+				ApplicationPreferencesActivity.DISABLE_PASSPHRASE_PREF, false);
+	}
 
-  private boolean isPassphraseDisabled() {
-    return PreferenceManager.getDefaultSharedPreferences(this)
-                            .getBoolean(ApplicationPreferencesActivity.DISABLE_PASSPHRASE_PREF, false);
-  }
+	@Override
+	public IBinder onBind(Intent arg0) {
+		Log.w(TAG, TAG + " is bound to " + arg0.describeContents());
+		return binder;
+	}
 
+	public class KeyCachingBinder extends Binder {
+		public KeyCachingServiceSSS getService() {
+			return KeyCachingServiceSSS.this;
+		}
+	}
 
-  @Override
-  public IBinder onBind(Intent arg0) {
-    return binder;
-  }
+	public static void registerPassphraseActivityStarted(Context activity) {
+		Intent intent = new Intent(activity, KeyCachingServiceSSS.class);
+		intent.setAction(KeyCachingServiceSSS.ACTIVITY_START_EVENT);
+		activity.startService(intent);
+	}
 
-  public class KeyCachingBinder extends Binder {
-    public KeyCachingServiceSSS getService() {
-      return KeyCachingServiceSSS.this;
-    }
-  }
-
-  public static void registerPassphraseActivityStarted(Context activity) {
-    Intent intent = new Intent(activity, KeyCachingServiceSSS.class);
-    intent.setAction(KeyCachingServiceSSS.ACTIVITY_START_EVENT);
-    activity.startService(intent);
-  }
-
-  public static void registerPassphraseActivityStopped(Context activity) {
-    Intent intent = new Intent(activity, KeyCachingServiceSSS.class);
-    intent.setAction(KeyCachingServiceSSS.ACTIVITY_STOP_EVENT);
-    activity.startService(intent);
-  }
+	public static void registerPassphraseActivityStopped(Context activity) {
+		Intent intent = new Intent(activity, KeyCachingServiceSSS.class);
+		intent.setAction(KeyCachingServiceSSS.ACTIVITY_STOP_EVENT);
+		activity.startService(intent);
+	}
 }

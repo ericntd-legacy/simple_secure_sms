@@ -44,12 +44,12 @@ import org.thoughtcrime.securesms.recipients.RecipientFormattingException;
 import org.thoughtcrime.securesms.recipients.Recipients;
 import org.thoughtcrime.securesms.sms.SmsTransportDetails;
 import org.thoughtcrime.securesms.util.Hex;
-import org.thoughtcrime.securesms.util.WorkerThread;
 
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
+import textsecure.util.WorkerThreadSSS;
 import ws.com.google.android.mms.ContentType;
 import ws.com.google.android.mms.MmsException;
 import ws.com.google.android.mms.pdu.MultimediaMessagePdu;
@@ -68,7 +68,7 @@ public class DecryptingQueueSSS {
   private static final List<Runnable> workQueue = new LinkedList<Runnable>();
 
   static {
-    Thread workerThread = new WorkerThread(workQueue, "Async Decryption Thread");
+    Thread workerThread = new WorkerThreadSSS(workQueue, "Async Decryption Thread");
     workerThread.start();
   }
 

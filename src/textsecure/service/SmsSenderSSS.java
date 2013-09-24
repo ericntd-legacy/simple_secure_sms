@@ -50,6 +50,7 @@ public class SmsSenderSSS {
     //UniversalTransport transport        = new UniversalTransport(context, masterSecret);
     SmsTransportSSS smsTransport = new SmsTransportSSS(context, masterSecret);
     EncryptingSmsDatabase database      = DatabaseFactory.getEncryptingSmsDatabase(context);
+    Log.w(TAG, "There are currently "+database.getMessageCount()+ " message stored (and waiting to be sent?)");
 
     EncryptingSmsDatabase.Reader reader = null;
     SmsMessageRecord record;
